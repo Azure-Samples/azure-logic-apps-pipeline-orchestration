@@ -1,0 +1,1026 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "logicAppName": {
+            "type": "string",
+            "defaultValue": "[concat(uniqueString(concat(subscription().subscriptionId, resourceGroup().name)), '-pipeline-orchestrator')]",
+            "metadata": {
+                "description": "The name of the logic app."
+            }
+        },
+        "location": {
+            "type": "String",
+            "defaultValue": "[resourceGroup().location]",
+            "metadata": {
+                "description": "The location resources will be deployed to"
+            }
+        }
+    },
+    "variables": {
+        "baseConnectionsId": "[concat('/subscriptions/', subscription().subscriptionId, '/providers/Microsoft.Web/locations/', parameters('location'), '/managedApis/')]",
+        "armConnectionName": "arm",
+        "armManagedApiId": "[concat(variables('baseConnectionsId'), variables('armConnectionName'))]",
+        "azdoConnectionName": "visualstudioteamservices",
+        "azdoManagedApiId": "[concat(variables('baseConnectionsId'), variables('azdoConnectionName'))]"
+    },
+    "resources": [
+        {
+            "type": "Microsoft.Web/connections",
+            "apiVersion": "2016-06-01",
+            "name": "[variables('armConnectionName')]",
+            "location": "[parameters('location')]",
+            "properties": {
+                "displayName": "[variables('armConnectionName')]",
+                "customParameterValues": {
+                },
+                "api": {
+                    "id": "[variables('armManagedApiId')]"
+                }
+            }
+        },
+        {
+            "type": "Microsoft.Web/connections",
+            "apiVersion": "2016-06-01",
+            "name": "[variables('azdoConnectionName')]",
+            "location": "[parameters('location')]",
+            "properties": {
+                "displayName": "[variables('azdoConnectionName')]",
+                "customParameterValues": {
+                },
+                "api": {
+                    "id": "[variables('azdoManagedApiId')]"
+                }
+            }
+        },
+        {
+            "name": "[parameters('logicAppName')]",
+            "type": "Microsoft.Logic/workflows",
+            "location": "[parameters('location')]",
+            "apiVersion": "2016-06-01",
+            "dependsOn": [
+                "[resourceId('Microsoft.Web/connections', variables('armConnectionName'))]"
+            ],
+            "properties": {
+                "definition": {
+                    "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+                    "actions": {
+                        "For_each_Primary_Sync_Pipeline": {
+                            "actions": {
+                                "ifFailureHasntOccurred": {
+                                    "actions": {
+                                        "Find_primary_definition": {
+                                            "inputs": {
+                                                "from": "@body('Find_primary_definition_name')",
+                                                "where": "@equals(item()?['path'], body('primarySyncInfo')?['path'])"
+                                            },
+                                            "runAfter": {
+                                                "Find_primary_definition_name": [
+                                                    "Succeeded"
+                                                ]
+                                            },
+                                            "type": "Query"
+                                        },
+                                        "Find_primary_definition_name": {
+                                            "inputs": {
+                                                "from": "@body('GetAllDefinitions')?['value']",
+                                                "where": "@equals(item()?['name'], body('primarySyncInfo')?['name'])"
+                                            },
+                                            "runAfter": {
+                                                "Set_parameters": [
+                                                    "Succeeded"
+                                                ]
+                                            },
+                                            "type": "Query"
+                                        },
+                                        "For_each_parameter": {
+                                            "actions": {
+                                                "Append_to_dynamic_parameters": {
+                                                    "inputs": {
+                                                        "name": "dynamicParameters",
+                                                        "value": ",\"@{body('Parse_Parameter')?['name']}\": \"@{body('Parse_Parameter')?['value']}\""
+                                                    },
+                                                    "runAfter": {
+                                                        "Parse_Parameter": [
+                                                            "Succeeded"
+                                                        ]
+                                                    },
+                                                    "type": "AppendToStringVariable"
+                                                },
+                                                "Parse_Parameter": {
+                                                    "inputs": {
+                                                        "content": "@items('For_each_parameter')",
+                                                        "schema": {
+                                                            "properties": {
+                                                                "name": {
+                                                                    "type": "string"
+                                                                },
+                                                                "value": {
+                                                                    "type": "string"
+                                                                }
+                                                            },
+                                                            "type": "object"
+                                                        }
+                                                    },
+                                                    "runAfter": {
+                                                    },
+                                                    "type": "ParseJson"
+                                                }
+                                            },
+                                            "foreach": "@body('primarySyncInfo')?['parameters']",
+                                            "runAfter": {
+                                                "Reset_dynamic_parameters": [
+                                                    "Succeeded"
+                                                ]
+                                            },
+                                            "type": "Foreach"
+                                        },
+                                        "Reset_dynamic_parameters": {
+                                            "inputs": {
+                                                "name": "dynamicParameters",
+                                                "value": "@variables('empty')"
+                                            },
+                                            "runAfter": {
+                                                "primarySyncInfo": [
+                                                    "Succeeded"
+                                                ]
+                                            },
+                                            "type": "SetVariable"
+                                        },
+                                        "Set_parameters": {
+                                            "inputs": {
+                                                "name": "parameters",
+                                                "value": "{\n    \"workGroupId\": \"@{triggerBody()?['workGroupId']}\",\n    \"environment\": \"@{triggerBody()?['environment']}\",\n    \"location\": \"@{triggerBody()?['location']}\"@{variables('dynamicParameters')}\n}"
+                                            },
+                                            "runAfter": {
+                                                "For_each_parameter": [
+                                                    "Succeeded"
+                                                ]
+                                            },
+                                            "type": "SetVariable"
+                                        },
+                                        "Switch": {
+                                            "cases": {
+                                                "Case_Pipeline": {
+                                                    "actions": {
+                                                        "Reset_test_condition": {
+                                                            "inputs": {
+                                                                "name": "pipelineStatus",
+                                                                "value": "@variables('empty')"
+                                                            },
+                                                            "runAfter": {
+                                                            },
+                                                            "type": "SetVariable"
+                                                        },
+                                                        "Set_Failed": {
+                                                            "inputs": {
+                                                                "name": "hasFailed",
+                                                                "value": true
+                                                            },
+                                                            "runAfter": {
+                                                                "Until_pipeline_status_is_complete_or_failed": [
+                                                                    "Failed",
+                                                                    "TimedOut"
+                                                                ]
+                                                            },
+                                                            "type": "SetVariable"
+                                                        },
+                                                        "Until_pipeline_status_is_complete_or_failed": {
+                                                            "actions": {
+                                                                "Get_Build_Status": {
+                                                                    "inputs": {
+                                                                        "body": {
+                                                                            "Method": "GET",
+                                                                            "Uri": "/@{triggerBody()?['project']}/_apis/build/builds/@{body('queuePipeline')?['id']}?api-version=5.1"
+                                                                        },
+                                                                        "host": {
+                                                                            "connection": {
+                                                                                "name": "@parameters('$connections')['visualstudioteamservices']['connectionId']"
+                                                                            }
+                                                                        },
+                                                                        "method": "post",
+                                                                        "path": "/httprequest",
+                                                                        "queries": {
+                                                                            "account": "@triggerBody()?['organization']"
+                                                                        }
+                                                                    },
+                                                                    "runAfter": {
+                                                                        "Slow_it_down": [
+                                                                            "Succeeded"
+                                                                        ]
+                                                                    },
+                                                                    "type": "ApiConnection"
+                                                                },
+                                                                "Parse_Pipeline_Status": {
+                                                                    "inputs": {
+                                                                        "content": "@body('Get_Build_Status')",
+                                                                        "schema": {
+                                                                            "properties": {
+                                                                                "result": {
+                                                                                    "type": "string"
+                                                                                },
+                                                                                "status": {
+                                                                                    "type": "string"
+                                                                                }
+                                                                            },
+                                                                            "type": "object"
+                                                                        }
+                                                                    },
+                                                                    "runAfter": {
+                                                                        "Get_Build_Status": [
+                                                                            "Succeeded"
+                                                                        ]
+                                                                    },
+                                                                    "type": "ParseJson"
+                                                                },
+                                                                "Set_pipeline_status_to_completed": {
+                                                                    "inputs": {
+                                                                        "name": "pipelineStatus",
+                                                                        "value": "@body('Parse_Pipeline_Status')?['status']"
+                                                                    },
+                                                                    "runAfter": {
+                                                                        "Parse_Pipeline_Status": [
+                                                                            "Succeeded"
+                                                                        ]
+                                                                    },
+                                                                    "type": "SetVariable"
+                                                                },
+                                                                "Slow_it_down": {
+                                                                    "inputs": {
+                                                                        "interval": {
+                                                                            "count": 1,
+                                                                            "unit": "Minute"
+                                                                        }
+                                                                    },
+                                                                    "runAfter": {
+                                                                    },
+                                                                    "type": "Wait"
+                                                                },
+                                                                "is_failed": {
+                                                                    "actions": {
+                                                                        "report_failure": {
+                                                                            "inputs": {
+                                                                                "name": "hasFailed",
+                                                                                "value": true
+                                                                            },
+                                                                            "runAfter": {
+                                                                            },
+                                                                            "type": "SetVariable"
+                                                                        }
+                                                                    },
+                                                                    "expression": {
+                                                                        "and": [
+                                                                            {
+                                                                                "equals": [
+                                                                                    "@body('Parse_Pipeline_Status')?['status']",
+                                                                                    "completed"
+                                                                                ]
+                                                                            },
+                                                                            {
+                                                                                "not": {
+                                                                                    "equals": [
+                                                                                        "@body('Parse_Pipeline_Status')?['result']",
+                                                                                        "succeeded"
+                                                                                    ]
+                                                                                }
+                                                                            }
+                                                                        ]
+                                                                    },
+                                                                    "runAfter": {
+                                                                        "Set_pipeline_status_to_completed": [
+                                                                            "Succeeded"
+                                                                        ]
+                                                                    },
+                                                                    "type": "If"
+                                                                }
+                                                            },
+                                                            "expression": "@equals(variables('pipelineStatus'), 'completed')",
+                                                            "limit": {
+                                                                "count": 60,
+                                                                "timeout": "PT1H"
+                                                            },
+                                                            "runAfter": {
+                                                                "Reset_test_condition": [
+                                                                    "Succeeded"
+                                                                ]
+                                                            },
+                                                            "type": "Until"
+                                                        }
+                                                    },
+                                                    "case": "pipeline"
+                                                },
+                                                "Case_Resource_Group": {
+                                                    "actions": {
+                                                        "FlagFailure": {
+                                                            "inputs": {
+                                                                "name": "hasFailed",
+                                                                "value": true
+                                                            },
+                                                            "runAfter": {
+                                                                "SyncExecutionScope": [
+                                                                    "Failed",
+                                                                    "TimedOut"
+                                                                ]
+                                                            },
+                                                            "type": "SetVariable"
+                                                        },
+                                                        "Set_resource_group_name": {
+                                                            "actions": {
+                                                                "Set_dynamic_resource_group_name": {
+                                                                    "inputs": {
+                                                                        "name": "resourceGroupName",
+                                                                        "value": "@{triggerBody()?['workGroupId']}-@{triggerBody()?['location']}-@{triggerBody()?['environment']}-@{body('primarySyncInfo')?['resourceGroupName']}"
+                                                                    },
+                                                                    "runAfter": {
+                                                                    },
+                                                                    "type": "SetVariable"
+                                                                }
+                                                            },
+                                                            "else": {
+                                                                "actions": {
+                                                                    "Set_passed_resource_group_name": {
+                                                                        "inputs": {
+                                                                            "name": "resourceGroupName",
+                                                                            "value": "@{items('For_each_Primary_Sync_Pipeline')['resourceGroupName']}"
+                                                                        },
+                                                                        "runAfter": {
+                                                                        },
+                                                                        "type": "SetVariable"
+                                                                    }
+                                                                }
+                                                            },
+                                                            "expression": {
+                                                                "and": [
+                                                                    {
+                                                                        "equals": [
+                                                                            "@items('For_each_Primary_Sync_Pipeline')['useResourceGroupNamingConvention']",
+                                                                            true
+                                                                        ]
+                                                                    }
+                                                                ]
+                                                            },
+                                                            "runAfter": {
+                                                            },
+                                                            "type": "If"
+                                                        },
+                                                        "SyncExecutionScope": {
+                                                            "actions": {
+                                                                "Delay": {
+                                                                    "inputs": {
+                                                                        "interval": {
+                                                                            "count": 2,
+                                                                            "unit": "Minute"
+                                                                        }
+                                                                    },
+                                                                    "runAfter": {
+                                                                    },
+                                                                    "type": "Wait"
+                                                                },
+                                                                "Read_a_template_deployment": {
+                                                                    "inputs": {
+                                                                        "host": {
+                                                                            "connection": {
+                                                                                "name": "@parameters('$connections')['arm']['connectionId']"
+                                                                            }
+                                                                        },
+                                                                        "method": "get",
+                                                                        "path": "/subscriptions/@{encodeURIComponent(triggerBody()?['azureSubscriptionId'])}/resourcegroups/@{encodeURIComponent(variables('resourceGroupName'))}/providers/Microsoft.Resources/deployments/@{encodeURIComponent(body('queuePipeline')?['buildNumber'])}",
+                                                                        "queries": {
+                                                                            "wait": true,
+                                                                            "x-ms-api-version": "2016-06-01"
+                                                                        }
+                                                                    },
+                                                                    "runAfter": {
+                                                                        "Delay": [
+                                                                            "Succeeded"
+                                                                        ]
+                                                                    },
+                                                                    "type": "ApiConnection"
+                                                                }
+                                                            },
+                                                            "runAfter": {
+                                                                "Wait_for_Pipeline_to_start": [
+                                                                    "Succeeded"
+                                                                ]
+                                                            },
+                                                            "type": "Scope"
+                                                        },
+                                                        "Wait_for_Pipeline_to_start": {
+                                                            "actions": {
+                                                                "Set_test_condition": {
+                                                                    "inputs": {
+                                                                        "name": "pipelineStatus",
+                                                                        "value": "@variables('empty')"
+                                                                    },
+                                                                    "runAfter": {
+                                                                    },
+                                                                    "type": "SetVariable"
+                                                                },
+                                                                "Until": {
+                                                                    "actions": {
+                                                                        "Delay_the_check": {
+                                                                            "inputs": {
+                                                                                "interval": {
+                                                                                    "count": 1,
+                                                                                    "unit": "Minute"
+                                                                                }
+                                                                            },
+                                                                            "runAfter": {
+                                                                            },
+                                                                            "type": "Wait"
+                                                                        },
+                                                                        "Get_pipeline_status": {
+                                                                            "inputs": {
+                                                                                "body": {
+                                                                                    "Method": "GET",
+                                                                                    "Uri": "/@{triggerBody()?['project']}/_apis/build/builds/@{body('queuePipeline')?['id']}?api-version=5.1"
+                                                                                },
+                                                                                "host": {
+                                                                                    "connection": {
+                                                                                        "name": "@parameters('$connections')['visualstudioteamservices']['connectionId']"
+                                                                                    }
+                                                                                },
+                                                                                "method": "post",
+                                                                                "path": "/httprequest",
+                                                                                "queries": {
+                                                                                    "account": "@triggerBody()?['organization']"
+                                                                                }
+                                                                            },
+                                                                            "runAfter": {
+                                                                                "Delay_the_check": [
+                                                                                    "Succeeded"
+                                                                                ]
+                                                                            },
+                                                                            "type": "ApiConnection"
+                                                                        },
+                                                                        "If_not_waiting": {
+                                                                            "actions": {
+                                                                                "Set_variable": {
+                                                                                    "inputs": {
+                                                                                        "name": "pipelineStatus",
+                                                                                        "value": "inProgress"
+                                                                                    },
+                                                                                    "runAfter": {
+                                                                                    },
+                                                                                    "type": "SetVariable"
+                                                                                }
+                                                                            },
+                                                                            "expression": {
+                                                                                "and": [
+                                                                                    {
+                                                                                        "not": {
+                                                                                            "equals": [
+                                                                                                "@body('Parse_status')?['status']",
+                                                                                                "notStarted"
+                                                                                            ]
+                                                                                        }
+                                                                                    },
+                                                                                    {
+                                                                                        "not": {
+                                                                                            "equals": [
+                                                                                                "@body('Parse_status')?['status']",
+                                                                                                "none"
+                                                                                            ]
+                                                                                        }
+                                                                                    }
+                                                                                ]
+                                                                            },
+                                                                            "runAfter": {
+                                                                                "Parse_status": [
+                                                                                    "Succeeded"
+                                                                                ]
+                                                                            },
+                                                                            "type": "If"
+                                                                        },
+                                                                        "Parse_status": {
+                                                                            "inputs": {
+                                                                                "content": "@body('Get_pipeline_status')",
+                                                                                "schema": {
+                                                                                    "properties": {
+                                                                                        "result": {
+                                                                                            "type": "string"
+                                                                                        },
+                                                                                        "status": {
+                                                                                            "type": "string"
+                                                                                        }
+                                                                                    },
+                                                                                    "type": "object"
+                                                                                }
+                                                                            },
+                                                                            "runAfter": {
+                                                                                "Get_pipeline_status": [
+                                                                                    "Succeeded"
+                                                                                ]
+                                                                            },
+                                                                            "type": "ParseJson"
+                                                                        }
+                                                                    },
+                                                                    "expression": "@equals(variables('pipelineStatus'), 'inProgress')",
+                                                                    "limit": {
+                                                                        "count": 60,
+                                                                        "timeout": "PT1H"
+                                                                    },
+                                                                    "runAfter": {
+                                                                        "Set_test_condition": [
+                                                                            "Succeeded"
+                                                                        ]
+                                                                    },
+                                                                    "type": "Until"
+                                                                }
+                                                            },
+                                                            "runAfter": {
+                                                                "Set_resource_group_name": [
+                                                                    "Succeeded"
+                                                                ]
+                                                            },
+                                                            "type": "Scope"
+                                                        }
+                                                    },
+                                                    "case": "resourceGroup"
+                                                }
+                                            },
+                                            "default": {
+                                                "actions": {
+                                                }
+                                            },
+                                            "expression": "@body('primarySyncInfo')?['validationType']",
+                                            "runAfter": {
+                                                "queuePipeline": [
+                                                    "Succeeded"
+                                                ]
+                                            },
+                                            "type": "Switch"
+                                        },
+                                        "primarySyncInfo": {
+                                            "inputs": {
+                                                "content": "@items('For_each_Primary_Sync_Pipeline')",
+                                                "schema": {
+                                                    "properties": {
+                                                        "branch": {
+                                                            "type": "string"
+                                                        },
+                                                        "name": {
+                                                            "type": "string"
+                                                        },
+                                                        "parameters": {
+                                                            "items": {
+                                                                "properties": {
+                                                                    "name": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "value": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "name",
+                                                                    "value"
+                                                                ],
+                                                                "type": "object"
+                                                            },
+                                                            "type": "array"
+                                                        },
+                                                        "path": {
+                                                            "type": "string"
+                                                        },
+                                                        "resourceGroupName": {
+                                                            "type": "string"
+                                                        },
+                                                        "useResourceGroupNamingConvention": {
+                                                            "type": "boolean"
+                                                        },
+                                                        "validationType": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "type": "object"
+                                                }
+                                            },
+                                            "runAfter": {
+                                            },
+                                            "type": "ParseJson"
+                                        },
+                                        "queuePipeline": {
+                                            "inputs": {
+                                                "body": {
+                                                    "parameters": "@variables('parameters')",
+                                                    "sourceBranch": "@body('primarySyncInfo')?['branch']"
+                                                },
+                                                "host": {
+                                                    "connection": {
+                                                        "name": "@parameters('$connections')['visualstudioteamservices']['connectionId']"
+                                                    }
+                                                },
+                                                "method": "post",
+                                                "path": "/@{encodeURIComponent(triggerBody()?['project'])}/_apis/build/builds",
+                                                "queries": {
+                                                    "account": "@triggerBody()?['organization']",
+                                                    "buildDefId": "@{first(body('Find_primary_definition'))['id']}"
+                                                }
+                                            },
+                                            "runAfter": {
+                                                "Find_primary_definition": [
+                                                    "Succeeded"
+                                                ]
+                                            },
+                                            "type": "ApiConnection"
+                                        }
+                                    },
+                                    "expression": {
+                                        "and": [
+                                            {
+                                                "equals": [
+                                                    "@variables('hasFailed')",
+                                                    false
+                                                ]
+                                            }
+                                        ]
+                                    },
+                                    "runAfter": {
+                                    },
+                                    "type": "If"
+                                }
+                            },
+                            "foreach": "@triggerBody()?['primarySyncPipelines']",
+                            "runAfter": {
+                                "initDynamicParameters": [
+                                    "Succeeded"
+                                ],
+                                "initHasFailed": [
+                                    "Succeeded"
+                                ],
+                                "initPipelineStatus": [
+                                    "Succeeded"
+                                ],
+                                "initResourceGroupName": [
+                                    "Succeeded"
+                                ]
+                            },
+                            "runtimeConfiguration": {
+                                "concurrency": {
+                                    "repetitions": 1
+                                }
+                            },
+                            "type": "Foreach"
+                        },
+                        "GetAllDefinitions": {
+                            "inputs": {
+                                "body": {
+                                    "Method": "GET",
+                                    "Uri": "/@{triggerBody()?['project']}/_apis/build/definitions"
+                                },
+                                "host": {
+                                    "connection": {
+                                        "name": "@parameters('$connections')['visualstudioteamservices']['connectionId']"
+                                    }
+                                },
+                                "method": "post",
+                                "path": "/httprequest",
+                                "queries": {
+                                    "account": "@triggerBody()?['organization']"
+                                }
+                            },
+                            "runAfter": {
+                            },
+                            "type": "ApiConnection"
+                        },
+                        "ifPrimaryHasntFailed": {
+                            "actions": {
+                                "For_each_secondary_async_pipeline": {
+                                    "actions": {
+                                        "Find_secondary_definition": {
+                                            "inputs": {
+                                                "from": "@body('Find_secondary_definition_name')",
+                                                "where": "@equals(item()?['path'], body('secondaryAsyncInfo')?['path'])"
+                                            },
+                                            "runAfter": {
+                                                "Find_secondary_definition_name": [
+                                                    "Succeeded"
+                                                ]
+                                            },
+                                            "type": "Query"
+                                        },
+                                        "Find_secondary_definition_name": {
+                                            "inputs": {
+                                                "from": "@body('GetAllDefinitions')?['value']",
+                                                "where": "@equals(item()?['name'], body('secondaryAsyncInfo')?['name'])"
+                                            },
+                                            "runAfter": {
+                                                "Set_secondary_parameters": [
+                                                    "Succeeded"
+                                                ]
+                                            },
+                                            "type": "Query"
+                                        },
+                                        "For_each": {
+                                            "actions": {
+                                                "Append_to_string_variable": {
+                                                    "inputs": {
+                                                        "name": "dynamicParameters",
+                                                        "value": ",\"@{body('Parse_secondary_parameters')?['name']}\": \"@{body('Parse_secondary_parameters')?['value']}\""
+                                                    },
+                                                    "runAfter": {
+                                                        "Parse_secondary_parameters": [
+                                                            "Succeeded"
+                                                        ]
+                                                    },
+                                                    "type": "AppendToStringVariable"
+                                                },
+                                                "Parse_secondary_parameters": {
+                                                    "inputs": {
+                                                        "content": "@items('For_each')",
+                                                        "schema": {
+                                                            "properties": {
+                                                                "name": {
+                                                                    "type": "string"
+                                                                },
+                                                                "value": {
+                                                                    "type": "string"
+                                                                }
+                                                            },
+                                                            "type": "object"
+                                                        }
+                                                    },
+                                                    "runAfter": {
+                                                    },
+                                                    "type": "ParseJson"
+                                                }
+                                            },
+                                            "foreach": "@body('secondaryAsyncInfo')?['parameters']",
+                                            "runAfter": {
+                                                "Reset_secondary_dynamic_parameters": [
+                                                    "Succeeded"
+                                                ]
+                                            },
+                                            "type": "Foreach"
+                                        },
+                                        "Reset_secondary_dynamic_parameters": {
+                                            "inputs": {
+                                                "name": "dynamicParameters",
+                                                "value": "@variables('empty')"
+                                            },
+                                            "runAfter": {
+                                                "secondaryAsyncInfo": [
+                                                    "Succeeded"
+                                                ]
+                                            },
+                                            "type": "SetVariable"
+                                        },
+                                        "Set_secondary_parameters": {
+                                            "inputs": {
+                                                "name": "parameters",
+                                                "value": "{\n    \"workGroupId\": \"@{triggerBody()?['workGroupId']}\",\n    \"environment\": \"@{triggerBody()?['environment']}\",\n    \"location\": \"@{triggerBody()?['location']}\"@{variables('dynamicParameters')}\n}"
+                                            },
+                                            "runAfter": {
+                                                "For_each": [
+                                                    "Succeeded"
+                                                ]
+                                            },
+                                            "type": "SetVariable"
+                                        },
+                                        "queueChildPipeline": {
+                                            "inputs": {
+                                                "body": {
+                                                    "parameters": "@variables('parameters')",
+                                                    "sourceBranch": "@body('secondaryAsyncInfo')?['branch']"
+                                                },
+                                                "host": {
+                                                    "connection": {
+                                                        "name": "@parameters('$connections')['visualstudioteamservices']['connectionId']"
+                                                    }
+                                                },
+                                                "method": "post",
+                                                "path": "/@{encodeURIComponent(triggerBody()?['project'])}/_apis/build/builds",
+                                                "queries": {
+                                                    "account": "@triggerBody()?['organization']",
+                                                    "buildDefId": "@{first(body('Find_secondary_definition'))['id']}"
+                                                }
+                                            },
+                                            "runAfter": {
+                                                "Find_secondary_definition": [
+                                                    "Succeeded"
+                                                ]
+                                            },
+                                            "type": "ApiConnection"
+                                        },
+                                        "secondaryAsyncInfo": {
+                                            "inputs": {
+                                                "content": "@items('For_each_secondary_async_pipeline')",
+                                                "schema": {
+                                                    "properties": {
+                                                        "branch": {
+                                                            "type": "string"
+                                                        },
+                                                        "name": {
+                                                            "type": "string"
+                                                        },
+                                                        "parameters": {
+                                                            "type": "array"
+                                                        }
+                                                    },
+                                                    "type": "object"
+                                                }
+                                            },
+                                            "runAfter": {
+                                            },
+                                            "type": "ParseJson"
+                                        }
+                                    },
+                                    "foreach": "@triggerBody()?['secondaryAsyncPipelines']",
+                                    "runAfter": {
+                                    },
+                                    "type": "Foreach"
+                                }
+                            },
+                            "expression": {
+                                "and": [
+                                    {
+                                        "equals": [
+                                            "@variables('hasFailed')",
+                                            false
+                                        ]
+                                    }
+                                ]
+                            },
+                            "runAfter": {
+                                "For_each_Primary_Sync_Pipeline": [
+                                    "Succeeded"
+                                ]
+                            },
+                            "type": "If"
+                        },
+                        "initDynamicParameters": {
+                            "inputs": {
+                                "variables": [
+                                    {
+                                        "name": "dynamicParameters",
+                                        "type": "string"
+                                    }
+                                ]
+                            },
+                            "runAfter": {
+                                "initParameters": [
+                                    "Succeeded"
+                                ]
+                            },
+                            "type": "InitializeVariable"
+                        },
+                        "initEmpty": {
+                            "inputs": {
+                                "variables": [
+                                    {
+                                        "name": "empty",
+                                        "type": "String"
+                                    }
+                                ]
+                            },
+                            "runAfter": {
+                                "GetAllDefinitions": [
+                                    "Succeeded"
+                                ]
+                            },
+                            "type": "InitializeVariable"
+                        },
+                        "initHasFailed": {
+                            "inputs": {
+                                "variables": [
+                                    {
+                                        "name": "hasFailed",
+                                        "type": "boolean",
+                                        "value": false
+                                    }
+                                ]
+                            },
+                            "runAfter": {
+                                "GetAllDefinitions": [
+                                    "Succeeded"
+                                ]
+                            },
+                            "type": "InitializeVariable"
+                        },
+                        "initParameters": {
+                            "inputs": {
+                                "variables": [
+                                    {
+                                        "name": "parameters",
+                                        "type": "string"
+                                    }
+                                ]
+                            },
+                            "runAfter": {
+                                "GetAllDefinitions": [
+                                    "Succeeded"
+                                ]
+                            },
+                            "type": "InitializeVariable"
+                        },
+                        "initPipelineStatus": {
+                            "inputs": {
+                                "variables": [
+                                    {
+                                        "name": "pipelineStatus",
+                                        "type": "string"
+                                    }
+                                ]
+                            },
+                            "runAfter": {
+                                "initEmpty": [
+                                    "Succeeded"
+                                ]
+                            },
+                            "type": "InitializeVariable"
+                        },
+                        "initResourceGroupName": {
+                            "inputs": {
+                                "variables": [
+                                    {
+                                        "name": "resourceGroupName",
+                                        "type": "String"
+                                    }
+                                ]
+                            },
+                            "runAfter": {
+                                "GetAllDefinitions": [
+                                    "Succeeded"
+                                ]
+                            },
+                            "type": "InitializeVariable"
+                        }
+                    },
+                    "contentVersion": "1.0.0.0",
+                    "outputs": {
+                    },
+                    "parameters": {
+                        "$connections": {
+                            "defaultValue": {
+                            },
+                            "type": "Object"
+                        }
+                    },
+                    "triggers": {
+                        "manual": {
+                            "inputs": {
+                                "method": "POST",
+                                "schema": {
+                                    "properties": {
+                                        "azureSubscriptionId": {
+                                            "type": "string"
+                                        },
+                                        "environment": {
+                                            "type": "string"
+                                        },
+                                        "location": {
+                                            "type": "string"
+                                        },
+                                        "organization": {
+                                            "type": "string"
+                                        },
+                                        "primarySyncPipelines": {
+                                            "type": "array"
+                                        },
+                                        "project": {
+                                            "type": "string"
+                                        },
+                                        "secondaryAsyncPipelines": {
+                                            "type": "array"
+                                        },
+                                        "workGroupId": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            },
+                            "kind": "Http",
+                            "type": "Request"
+                        }
+                    }
+                },
+                "parameters": {
+                    "$connections": {
+                        "value": {
+                            "arm": {
+                                "connectionId": "[resourceId('Microsoft.Web/connections', variables('armConnectionName'))]",
+                                "connectionName": "arm",
+                                "id": "[variables('armManagedApiId')]"
+                            },
+                            "visualstudioteamservices": {
+                                "connectionId": "[resourceId('Microsoft.Web/connections', variables('azdoConnectionName'))]",
+                                "connectionName": "visualstudioteamservices",
+                                "id": "[variables('azdoManagedApiId')]"
+                            }
+                        }
+                    }
+                }
+            },
+            "resources": [
+            ]
+        }
+    ],
+    "outputs": {
+        "logicAppName": {
+            "type": "string",
+            "value": "[variables('logicAppName')]"
+        }
+    }
+}

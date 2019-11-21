@@ -1,9 +1,9 @@
 ---
 page_type: sample
 languages:
-- csharp
+- yml
 products:
-- dotnet
+- logicapps
 description: "Add 150 character max description"
 urlFragment: "update-this-to-unique-url-stub"
 ---

@@ -1,0 +1,51 @@
+{
+  "organization": "shgaul",
+  "project": "LogicAppsAndDevOps",
+  "azureSubscriptionId": "14dcebd1-63b8-4cd1-9c38-18802d4616fa",
+  "location": "westus",
+  "workGroupId": "scg02",
+  "environment": "dev",
+  "primarySyncPipelines": [
+    {
+      "path": "\\CD",
+      "name": "NetworkResources",
+      "branch": "master",
+      "validationType": "pipeline",
+      "parameters": [
+        {
+          "name": "instance",
+          "value": "-1"
+        }
+      ]
+    },
+    {
+      "path": "\\CD",
+      "name": "NetworkResources",
+      "branch": "master",
+      "validationType": "pipeline",
+      "parameters": [
+        {
+          "name": "instance",
+          "value": "-2"
+        }
+      ]
+    },
+    {
+      "path": "\\CD",
+      "name": "SharedResources",
+      "branch": "master",
+      "validationType": "pipeline",
+      "parameters": []
+    },
+    {
+      "path": "\\CD",
+      "name": "IntegrationServiceEnvironment",
+      "branch": "master",
+      "validationType": "resourceGroup",
+      "resourceGroupName": "ise",
+      "useResourceGroupNamingConvention": true,
+      "parameters": []
+    }
+  ],
+  "secondaryAsyncPipelines": []
+}
