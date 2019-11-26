@@ -43,18 +43,64 @@ This sample provides an Azure Resource Manager template for a Logic apps that ca
 To setup this sample execute the follow steps in order.
 
 * Create a resource group within your Azure subscription
-* Deploy the [Azure Resource Manager Template](./pipeline-execution-app/azuredeploy.json)
+
+``` bash
+az group create -n {name of resource group to create}
+```
+
+* Deploy the [Azure Resource Manager Template](./azuredeploy.json)
+
+``` bash
+az group deployment create -g {name of resource group created} --template-file azuredeploy.json
+```
+
 * Authenticate the arm API Connector that was deployed with the template
-    * Navigate to the 
-* Authenticate the visualstudiosteamservices API connector that was deployed with the template
+  * Navigate to the "Edit API Connection" blade of the arm API Connection Resource
+  * Click the "Authorize"
+  * Login to the appropriate Azure Subscription
+
+![Screen shot of Azure Resource Manager Edit API Connection screen](./resources/arm-edit-api.png)
+
+* Authenticate the azuredevops API connector that was deployed with the template
+  * Navigate to the "Edit API Connection" blade of the azuredevops API Connection Resource
+  * Click the "Authorize"
+  * Login to the appropriate Azure DevOps subscription
+
+![Screen shot of Azure DevOps Edit API Connection screen](./resources/devops-edit-api.png)
 
 ## Runnning the sample
 
-Outline step-by-step instructions to execute the sample and see its output. Include steps for executing the sample from the IDE, starting specific services in the Azure portal or anything related to the overall launch of the code.
+To run do the following
+
+* Acquire the URL from the deployed logic app.
+  * Open the logic app's designer view blade
+  * Click on the "When a HTTP request is received" action
+  * Copy the url
+
+    ![Screen shot of Logic App Designer View](./resources/get-url-from-app.png)
+
+  * Construct the payload for the post request using the [Pipeline Orchestration Payload Documentation](./PIPELINE_PAYLOAD.md).
+  * Use your url posting tool of choice (Postman, curl, etc...). To post the request to the Logic app
 
 ## Key concepts
 
-Provide users with more context on the tools and services used in the sample. Explain some of the code that is being used and how services interact with each other.
+This sample is a result of several projects that had two conflicting demands in play, combined with long running pipelines that couldn't be broken up. These conflicting demands each have very valid ways of solving within the Azure DevOps ecosystem, but through in that long runner and things get hairy.
+
+The first demand being the day to day operation of a development pipeline for a complex system of services/applications. The kind that assumes that the system isn't complete once it's initially deployed to production. Updates will happen to it. When these updates occur, the busisness should need to deploy the entire set of systems and applications. Just the ones that were modified. aka the CD in CI/CD.
+
+The second demand being the intial deployement of the full complex system of services/applications into a fresh environment. This could be the deployment into test, staging, prod, Billy Bobs sandbox environment, etc. The point being, we're not looking for a continous deployment, we're looking for an initial deployment.
+
+You through in there a long running pipeline. Something like an ARM template the contains one of those Azure resources that you only ever deploy the first time cause it takes more than an hour to deploy (Integration Service Environments and App Service Environments are perfect examples). These can't be broken down into smaller bits. They just take a long time to deploy.
+
+So spends crazy amount of time creating this wonderful fully automated CI/CD Azure DevOps pipeline, only to have to nurse initial deployments into a new environment. Deploy one, wait for it complete, manually deploy the next, wait, next, wait, ...
+
+Through in there a need to create a Disaster Recovery set of resources, you know the kind where everything is the same except the region it's deployed to. The need to burst the volume of big resources (ISE) due to resrouce thershold are being hit.
+
+So this Logic App Sample allows you to define a set of Azure DevOps pipelines to execute, make a post call to the Logic App, sit back and wait for them to complete.
+
+<!--
+TODO: insert video demoing this execution here
+-->
 
 ## Contributing
 

@@ -21,8 +21,8 @@
         "baseConnectionsId": "[concat('/subscriptions/', subscription().subscriptionId, '/providers/Microsoft.Web/locations/', parameters('location'), '/managedApis/')]",
         "armConnectionName": "arm",
         "armManagedApiId": "[concat(variables('baseConnectionsId'), variables('armConnectionName'))]",
-        "azdoConnectionName": "visualstudioteamservices",
-        "azdoManagedApiId": "[concat(variables('baseConnectionsId'), variables('azdoConnectionName'))]"
+        "azdoConnectionName": "azuredevops",
+        "azdoManagedApiId": "[concat(variables('baseConnectionsId'), 'visualstudioteamservices')]"
     },
     "resources": [
         {
@@ -195,7 +195,7 @@
                                                                         },
                                                                         "host": {
                                                                             "connection": {
-                                                                                "name": "@parameters('$connections')['visualstudioteamservices']['connectionId']"
+                                                                                "name": "@parameters('$connections')['azuredevops']['connectionId']"
                                                                             }
                                                                         },
                                                                         "method": "post",
@@ -437,7 +437,7 @@
                                                                                 },
                                                                                 "host": {
                                                                                     "connection": {
-                                                                                        "name": "@parameters('$connections')['visualstudioteamservices']['connectionId']"
+                                                                                        "name": "@parameters('$connections')['azuredevops']['connectionId']"
                                                                                     }
                                                                                 },
                                                                                 "method": "post",
@@ -608,7 +608,7 @@
                                                 },
                                                 "host": {
                                                     "connection": {
-                                                        "name": "@parameters('$connections')['visualstudioteamservices']['connectionId']"
+                                                        "name": "@parameters('$connections')['azuredevops']['connectionId']"
                                                     }
                                                 },
                                                 "method": "post",
@@ -671,7 +671,7 @@
                                 },
                                 "host": {
                                     "connection": {
-                                        "name": "@parameters('$connections')['visualstudioteamservices']['connectionId']"
+                                        "name": "@parameters('$connections')['azuredevops']['connectionId']"
                                     }
                                 },
                                 "method": "post",
@@ -786,7 +786,7 @@
                                                 },
                                                 "host": {
                                                     "connection": {
-                                                        "name": "@parameters('$connections')['visualstudioteamservices']['connectionId']"
+                                                        "name": "@parameters('$connections')['azuredevops']['connectionId']"
                                                     }
                                                 },
                                                 "method": "post",
@@ -1004,9 +1004,9 @@
                                 "connectionName": "arm",
                                 "id": "[variables('armManagedApiId')]"
                             },
-                            "visualstudioteamservices": {
+                            "azuredevops": {
                                 "connectionId": "[resourceId('Microsoft.Web/connections', variables('azdoConnectionName'))]",
-                                "connectionName": "visualstudioteamservices",
+                                "connectionName": "azuredevops",
                                 "id": "[variables('azdoManagedApiId')]"
                             }
                         }
@@ -1020,7 +1020,7 @@
     "outputs": {
         "logicAppName": {
             "type": "string",
-            "value": "[variables('logicAppName')]"
+            "value": "[parameters('logicAppName')]"
         }
     }
 }
