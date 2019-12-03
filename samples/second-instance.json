@@ -8,37 +8,6 @@
   "primarySyncPipelines": [
     {
       "path": "\\CD",
-      "name": "NetworkResources",
-      "branch": "master",
-      "validationType": "pipeline",
-      "parameters": [
-        {
-          "name": "instance",
-          "value": "-1"
-        }
-      ]
-    },
-    {
-      "path": "\\CD",
-      "name": "NetworkResources",
-      "branch": "master",
-      "validationType": "pipeline",
-      "parameters": [
-        {
-          "name": "instance",
-          "value": "-2"
-        }
-      ]
-    },
-    {
-      "path": "\\CD",
-      "name": "SharedResources",
-      "branch": "master",
-      "validationType": "pipeline",
-      "parameters": []
-    },
-    {
-      "path": "\\CD",
       "name": "IntegrationServiceEnvironment",
       "branch": "master",
       "validationType": "resourceGroup",
@@ -47,7 +16,7 @@
       "parameters": [
         {
           "name": "instance",
-          "value": "-1"
+          "value": "-2"
         }
       ]
     }
@@ -60,18 +29,7 @@
       "parameters": [
         {
           "name": "instance",
-          "value": "-1"
-        }
-      ]
-    },
-    {
-      "path": "\\CD",
-      "name": "TargetOneResources",
-      "branch": "master",
-      "parameters": [
-        {
-          "name": "instance",
-          "value": "-1"
+          "value": "-2"
         }
       ]
     },
@@ -82,7 +40,7 @@
       "parameters": [
         {
           "name": "instance",
-          "value": "-1"
+          "value": "-2"
         }
       ]
     }

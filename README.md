@@ -84,19 +84,21 @@ To run do the following
 
 ## Key concepts
 
-This sample is a result of several projects that had two conflicting demands in play, combined with long running pipelines that couldn't be broken up. These conflicting demands each have very valid ways of solving within the Azure DevOps ecosystem, but through in that long runner and things get hairy.
+This sample allows for orchestration of many Azure DevOps pipelines using an Azure Logic App. This is very useful for scenarios where a series of discrete Azure DevOps pipelines are used to create/maintain/update small services within a larger ecosystem of services. In this environment you would want to have CI/CD pipelines created to allow for each distcrete service to by deployed individually. However, when a new environment is required, be it for testing, development, scaling, disaster recovery, etc., creating that new environment requires the execution of those pipelines in specific sequences and differing parameters.
 
-The first demand being the day to day operation of a development pipeline for a complex system of services/applications. The kind that assumes that the system isn't complete once it's initially deployed to production. Updates will happen to it. When these updates occur, the busisness should need to deploy the entire set of systems and applications. Just the ones that were modified. aka the CD in CI/CD.
+This sample allows for those scenarios by:
 
-The second demand being the intial deployement of the full complex system of services/applications into a fresh environment. This could be the deployment into test, staging, prod, Billy Bobs sandbox environment, etc. The point being, we're not looking for a continous deployment, we're looking for an initial deployment.
+* queing builds of the pipelines
+* with provided parameters
+* in the sequence defined
 
-You through in there a long running pipeline. Something like an ARM template the contains one of those Azure resources that you only ever deploy the first time cause it takes more than an hour to deploy (Integration Service Environments and App Service Environments are perfect examples). These can't be broken down into smaller bits. They just take a long time to deploy.
+It also allows for pipelines to be queued asychroniously, after the primary pipelines have completed.
 
-So spends crazy amount of time creating this wonderful fully automated CI/CD Azure DevOps pipeline, only to have to nurse initial deployments into a new environment. Deploy one, wait for it complete, manually deploy the next, wait, next, wait, ...
+Refer to the [pipeline payload documentation](./PIPELINE_PAYLOD.md) to see how to provide that information.
 
-Through in there a need to create a Disaster Recovery set of resources, you know the kind where everything is the same except the region it's deployed to. The need to burst the volume of big resources (ISE) due to resrouce thershold are being hit.
+You can review the detailed workflow of the Logic App after you deploy it to your Azure Subscription, but at a high level the Logic App uses the following work flow:
 
-So this Logic App Sample allows you to define a set of Azure DevOps pipelines to execute, make a post call to the Logic App, sit back and wait for them to complete.
+![High Level workflow of logic app](./resources/workflow.png)
 
 <!--
 TODO: insert video demoing this execution here
