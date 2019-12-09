@@ -2,10 +2,10 @@
 page_type: sample
 languages:
 - json
+- yaml
 products:
-- logicapps
-description: "Add 150 character max description"
-urlFragment: "update-this-to-unique-url-stub"
+- azure-logic-apps
+- azure-devops
 ---
 
 # Using Azure Logic App for Azure DevOps Pipeline Orchestration
@@ -18,7 +18,7 @@ Guidance on onboarding samples to docs.microsoft.com/samples: https://review.doc
 Taxonomies for products and languages: https://review.docs.microsoft.com/new-hope/information-architecture/metadata/taxonomies?branch=master
 -->
 
-This sample provides an Azure Resource Manager template for a Logic apps that can be used to orchestrate the execution of many Azure DevOps Pipelines. The Logic App is an HTTP triggered logic app that accepts a POST method. The payload has two arrays defined. The first array is the information for the pipelines that will need to be executed synchronously. The second is the information on the pipelines that, once the synchronous pipelines are completed, can be executed asynchronously.
+This sample provides an Azure Resource Manager template for a Azure Logic app that can be used to orchestrate the execution of many Azure DevOps Pipelines. The Logic App is an HTTP triggered logic app that accepts a POST method. The payload has two arrays defined. The first array is the information for the pipelines that will need to be executed synchronously. The second is the information on the pipelines that, once the synchronous pipelines are completed, can be executed asynchronously.
 
 ## Contents
 

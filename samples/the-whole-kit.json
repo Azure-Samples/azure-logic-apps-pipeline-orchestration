@@ -39,7 +39,7 @@
     },
     {
       "path": "\\CD",
-      "name": "IntegrationServiceEnvironment",
+      "name": "IntegrationEnvironmentResources",
       "branch": "master",
       "validationType": "resourceGroup",
       "resourceGroupName": "ise",
