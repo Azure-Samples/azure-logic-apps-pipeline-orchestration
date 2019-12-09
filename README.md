@@ -7,6 +7,7 @@ products:
 - azure-devops
 description: "This sample provides an Azure Resource Manager template for an Azure Logic app that can be used to orchestrate the execution of many Azure DevOps Pipelines."
 urlFragment: azure-devops-orchestration-with-logic-apps
+azureDeploy: https://github.com/Azure-Samples/azure-logic-apps-pipeline-orchestration/blob/master/azuredeploy.json
 ---
 
 # Using Azure Logic Apps for Azure DevOps Pipeline Orchestration
