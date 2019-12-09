@@ -2,13 +2,12 @@
 page_type: sample
 languages:
 - json
-- yaml
 products:
 - azure-logic-apps
 - azure-devops
 ---
 
-# Using Azure Logic App for Azure DevOps Pipeline Orchestration
+# Using Azure Logic Apps for Azure DevOps Pipeline Orchestration
 
 <!-- 
 Guidelines on README format: https://review.docs.microsoft.com/help/onboard/admin/samples/concepts/readme-template?branch=master
