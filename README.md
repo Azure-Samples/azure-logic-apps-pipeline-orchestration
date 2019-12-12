@@ -22,6 +22,13 @@ Taxonomies for products and languages: https://review.docs.microsoft.com/new-hop
 
 This sample provides an Azure Resource Manager template for a Azure Logic app that can be used to orchestrate the execution of many Azure DevOps Pipelines. The Logic App is an HTTP triggered logic app that accepts a POST method. The payload has two arrays defined. The first array is the information for the pipelines that will need to be executed synchronously. The second is the information on the pipelines that, once the synchronous pipelines are completed, can be executed asynchronously.
 
+Demo video of this Azure Logic App:
+
+[![Click to view video that demonstrates this azure logic app sample](./resources/video-thumbprint.png)](https://youtu.be/X5AvsAMEiQM)
+
+> The Azure DevOps project that is being used for this demo can be located here: [Azure DevOps Orchestration with Azure Logic Apps sample pipeline](https://dev.azure.com/shgaul/LogicAppsAndDevOps)
+
+
 ## Contents
 
 | File/folder       | Description                                             |
