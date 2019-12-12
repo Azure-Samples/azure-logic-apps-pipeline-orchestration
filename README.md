@@ -7,7 +7,6 @@ products:
 - azure-devops
 description: "This sample provides an Azure Resource Manager template for an Azure Logic app that can be used to orchestrate the execution of many Azure DevOps Pipelines."
 urlFragment: azure-devops-orchestration-with-logic-apps
-azureDeploy: https://github.com/Azure-Samples/azure-logic-apps-pipeline-orchestration/blob/master/azuredeploy.json
 ---
 
 # Using Azure Logic Apps for Azure DevOps Pipeline Orchestration
@@ -77,7 +76,7 @@ az group deployment create -g {name of resource group created} --template-file a
 
 ![Screen shot of Azure DevOps Edit API Connection screen](./resources/devops-edit-api.png)
 
-## Runnning the sample
+## Running the sample
 
 To run do the following
 
@@ -93,11 +92,11 @@ To run do the following
 
 ## Key concepts
 
-This sample allows for orchestration of many Azure DevOps pipelines using an Azure Logic App. This is very useful for scenarios where a series of discrete Azure DevOps pipelines are used to create/maintain/update small services within a larger ecosystem of services. In this environment you would want to have CI/CD pipelines created to allow for each distcrete service to by deployed individually. However, when a new environment is required, be it for testing, development, scaling, disaster recovery, etc., creating that new environment requires the execution of those pipelines in specific sequences and differing parameters.
+This sample allows for orchestration of many Azure DevOps pipelines using an Azure Logic App. This is very useful for scenarios where a series of discrete Azure DevOps pipelines are used to create/maintain/update small services within a larger ecosystem of services. In this environment you would want to have CI/CD pipelines created to allow for each discrete service to by deployed individually. However, when a new environment is required, be it for testing, development, scaling, disaster recovery, etc., creating that new environment requires the execution of those pipelines in specific sequences and differing parameters.
 
 This sample allows for those scenarios by:
 
-* queing builds of the pipelines
+* queueing builds of the pipelines
 * with provided parameters
 * in the sequence defined
 
